@@ -1,41 +1,50 @@
 const fs = require("fs");
 
+// ---------- Utilities ----------
+
+// Convert string in given base to BigInt
+function parseBigIntFromBase(str, base) {
+  const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+  const b = BigInt(base);
+  str = str.toLowerCase();
+  let acc = 0n;
+  for (let ch of str) {
+    if (ch === "_") continue;
+    const val = BigInt(digits.indexOf(ch));
+    if (val < 0n || val >= b) throw new Error(`Invalid digit '${ch}' for base ${base}`);
+    acc = acc * b + val;
+  }
+  return acc;
+}
+
+// ---------- Main Algorithm ----------
+
 // Step 1: Read JSON file
 const rawData = fs.readFileSync("data.json", "utf8");
 const data = JSON.parse(rawData);
 
-const n = data.keys.n;
-const k = data.keys.k;
+const k = Number(data.keys.k);
+if (!Number.isInteger(k) || k <= 0) throw new Error("Invalid k");
 
-// Step 2: Extract at least k roots
-let roots = [];
+// Step 2: Read first k roots
+const roots = [];
 let count = 0;
-
 for (let key of Object.keys(data)) {
   if (key === "keys") continue;
   if (count >= k) break;
 
-  let base = parseInt(data[key].base);
-  let value = data[key].value;
-  let decimalValue = parseInt(value, base); // base conversion
-  roots.push(decimalValue);
+  const base = Number(data[key].base);
+  const value = data[key].value.toString();
+  const r = parseBigIntFromBase(value, base);
+  roots.push(r);
   count++;
 }
 
-// Step 3: Construct polynomial from roots
-let coefficients = [1]; // start with polynomial = 1
+// Step 3: Compute constant term using (-1)^k * product(roots)
+let constant = 1n;
+for (let r of roots) constant *= r;
 
-for (let r of roots) {
-  let newCoefficients = Array(coefficients.length + 1).fill(0);
+if (k % 2 !== 0) constant = -constant;
 
-  for (let i = 0; i < coefficients.length; i++) {
-    newCoefficients[i] += -r * coefficients[i];
-    newCoefficients[i + 1] += coefficients[i];
-  }
-  coefficients = newCoefficients;
-}
-
-// Step 4: Print results
-console.log("Roots:", roots);
-console.log("Polynomial coefficients (from highest degree to constant):");
-console.log(coefficients);
+// Step 4: Print exact constant
+console.log(constant.toString());
